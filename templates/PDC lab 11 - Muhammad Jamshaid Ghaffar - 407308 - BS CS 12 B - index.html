@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Book Search</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body {
+      background-color: #f8f9fa;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .search-container {
+      background-color: white;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      padding: 25px;
+      margin-bottom: 30px;
+    }
+    .book-card {
+      transition: transform 0.2s, box-shadow 0.2s;
+      height: 100%;
+      border: none;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+    }
+    .book-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+    }
+    .badge-published {
+      background-color: #28a745;
+    }
+    .badge-unpublished {
+      background-color: #dc3545;
+    }
+    .category-badge {
+      background-color: #6610f2;
+    }
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 20px;
+    }
+    .book-id {
+      font-size: 0.8rem;
+      color: #6c757d;
+    }
+    .no-results {
+      text-align: center;
+      padding: 40px;
+      color: #6c757d;
+    }
+    /* Autocomplete Styles */
+    .autocomplete-container {
+      position: relative;
+    }
+    .autocomplete-items {
+      position: absolute;
+      border: 1px solid #d4d4d4;
+      border-top: none;
+      z-index: 99;
+      top: 100%;
+      left: 0;
+      right: 0;
+      border-radius: 0 0 5px 5px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      max-height: 250px;
+      overflow-y: auto;
+      background-color: white;
+      width: 100%;
+    }
+    .autocomplete-items div {
+      padding: 10px 15px;
+      cursor: pointer;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .autocomplete-items div:hover {
+      background-color: #e9ecef;
+    }
+    .autocomplete-active {
+      background-color: #007bff !important; 
+      color: #ffffff; 
+    }
+    .input-search-wrapper {
+      position: relative;
+      flex-grow: 1;
+      width: 100%;
+    }
+    .book-card .card-body {
+      padding: 1.5rem;
+    }
+    .stats-bar {
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      padding: 15px;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .stats-item {
+      text-align: center;
+    }
+    .stats-value {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #6610f2;
+    }
+    .stats-label {
+      font-size: 0.9rem;
+      color: #6c757d;
+    }
+    .page-header {
+      background: linear-gradient(135deg, #6610f2 0%, #7952b3 100%);
+      color: white;
+      padding: 2rem 0;
+      margin-bottom: 2rem;
+      border-radius: 0 0 15px 15px;
+    }
+    /* Add these badge specific styles */
+    .badge {
+      padding: 0.5em 0.8em;
+      font-weight: 500;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="page-header">
+    <div class="container">
+      <h1 class="text-center">
+        <i class="fas fa-book me-2"></i>Book Search
+      </h1>
+      <p class="text-center mb-0">Search through our collection of technical books</p>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="stats-bar mb-4">
+      <div class="stats-item">
+        <div class="stats-value" id="total-books">0</div>
+        <div class="stats-label">Total Books</div>
+      </div>
+      <div class="stats-item">
+        <div class="stats-value" id="java-books">0</div>
+        <div class="stats-label">Java Books</div>
+      </div>
+      <div class="stats-item">
+        <div class="stats-value" id="solr-books">0</div>
+        <div class="stats-label">Solr Books</div>
+      </div>
+      <div class="stats-item">
+        <div class="stats-value" id="published-books">0</div>
+        <div class="stats-label">Published</div>
+      </div>
+    </div>
+    
+    <div class="search-container">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <div class="autocomplete-container">
+            <div class="input-group">
+              <span class="input-group-text bg-white">
+                <i class="fas fa-search"></i>
+              </span>
+              <div class="input-search-wrapper">
+                <input 
+                  type="text" 
+                  id="q" 
+                  class="form-control" 
+                  placeholder="Search by title..." 
+                  aria-label="Search"
+                  autocomplete="off"
+                >
+                <div id="autocomplete-list" class="autocomplete-items"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="col-md-3">
+          <select id="category" class="form-select">
+            <option value="">All Categories</option>
+            <option value="java">Java</option>
+            <option value="solr">Solr</option>
+          </select>
+        </div>
+        
+        <div class="col-md-3">
+          <select id="published" class="form-select">
+            <option value="">Published Status</option>
+            <option value="true">Published</option>
+            <option value="false">Unpublished</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    
+    <div class="loading" id="loading">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <p class="mt-2">Searching books...</p>
+    </div>
+    
+    <div id="results-container" class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+      <!-- Results will be inserted here -->
+    </div>
+    
+    <div id="no-results" class="no-results" style="display: none;">
+      <i class="fas fa-search fa-3x mb-3"></i>
+      <h4>No books found</h4>
+      <p>Try adjusting your search criteria</p>
+    </div>
+  </div>
+
+  <script>
+    let searchTimeout = null;
+    let autocompleteTimeout = null;
+    let allBooks = []; // Cache for all books to use in autocomplete
+    
+    // Function to get all books for autocomplete and stats
+    async function getAllBooks() {
+      try {
+        const res = await fetch('/search?q=*');
+        allBooks = await res.json();
+        updateStats(allBooks);
+        return allBooks;
+      } catch (error) {
+        console.error("Error fetching all books:", error);
+        return [];
+      }
+    }
+    
+    // Update statistics display
+    function updateStats(books) {
+      document.getElementById('total-books').textContent = books.length;
+      
+      const javaBooks = books.filter(book => book.category === 'java').length;
+      document.getElementById('java-books').textContent = javaBooks;
+      
+      const solrBooks = books.filter(book => book.category === 'solr').length;
+      document.getElementById('solr-books').textContent = solrBooks;
+      
+      // Fix published books calculation to handle all possible formats
+      const publishedBooks = books.filter(book => 
+        book.published === true || 
+        book.published === 'true' || 
+        String(book.published).toLowerCase() === 'true'
+      ).length;
+      document.getElementById('published-books').textContent = publishedBooks;
+    }
+    
+    // Autocomplete function
+    function autocomplete(inp) {
+      inp.addEventListener("input", function(e) {
+        const val = this.value;
+        closeAllLists();
+        
+        if (!val) { return false; }
+        
+        if (autocompleteTimeout) {
+          clearTimeout(autocompleteTimeout);
+        }
+        
+        autocompleteTimeout = setTimeout(() => {
+          const autocompleteList = document.getElementById("autocomplete-list");
+          autocompleteList.innerHTML = ""; // Clear previous results
+          
+          // Filter books by title that matches input
+          const matches = allBooks.filter(book => {
+            return book.title.toLowerCase().includes(val.toLowerCase());
+          }).slice(0, 5); // Limit to 5 suggestions
+          
+          if (matches.length === 0) {
+            return false;
+          }
+          
+          matches.forEach(book => {
+            const item = document.createElement("DIV");
+            
+            // Bold the matching part of the text
+            const titleLower = book.title.toLowerCase();
+            const valLower = val.toLowerCase();
+            const index = titleLower.indexOf(valLower);
+            
+            if (index >= 0) {
+              item.innerHTML = book.title.substring(0, index) +
+                "<strong>" + book.title.substring(index, index + val.length) + "</strong>" +
+                book.title.substring(index + val.length);
+            } else {
+              item.innerHTML = book.title;
+            }
+            
+            item.innerHTML += ` <small class="text-muted">(${book.category})</small>`;
+            
+            item.addEventListener("click", function(e) {
+              inp.value = book.title;
+              search();
+              closeAllLists();
+            });
+            
+            autocompleteList.appendChild(item);
+          });
+        }, 200);
+      });
+      
+      // Close autocomplete lists when clicking elsewhere
+      document.addEventListener("click", function (e) {
+        closeAllLists(e.target);
+      });
+    }
+
+    function closeAllLists(elmnt) {
+      const autocompleteList = document.getElementById("autocomplete-list");
+      if (elmnt != autocompleteList && elmnt != document.getElementById("q")) {
+        autocompleteList.innerHTML = "";
+      }
+    }
+    
+    async function search() {
+      // Show loading spinner
+      document.getElementById('loading').style.display = 'block';
+      
+      // Get search parameters
+      const query = document.getElementById('q').value;
+      const category = document.getElementById('category').value;
+      const published = document.getElementById('published').value;
+      
+      // Clear previous timeout
+      if (searchTimeout) {
+        clearTimeout(searchTimeout);
+      }
+      
+      // Delay search to avoid too many requests while typing
+      searchTimeout = setTimeout(async () => {
+        try {
+          const res = await fetch(`/search?q=${encodeURIComponent(query || '*')}&category=${encodeURIComponent(category)}&published=${encodeURIComponent(published)}`);
+          const data = await res.json();
+          
+          const resultsContainer = document.getElementById('results-container');
+          
+          // Hide loading spinner
+          document.getElementById('loading').style.display = 'none';
+          
+          if (data.length === 0) {
+            resultsContainer.innerHTML = '';
+            document.getElementById('no-results').style.display = 'block';
+            return;
+          }
+          
+          document.getElementById('no-results').style.display = 'none';
+          
+          let html = '';
+          data.forEach(book => {
+            // Fix published status detection - handle all possible formats
+            const published = String(book.published).toLowerCase();
+            const isPublished = published === 'true' || published === 't' || book.published === true;
+            
+            const publishedBadgeClass = isPublished ? 'badge-published' : 'badge-unpublished';
+            const publishedText = isPublished ? 'Published' : 'Unpublished';
+            
+            html += `
+              <div class="col">
+                <div class="card book-card">
+                  <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                      <span class="badge category-badge">${book.category}</span>
+                      <span class="badge ${publishedBadgeClass}">${publishedText}</span>
+                    </div>
+                    <h5 class="card-title mt-2">${book.title}</h5>
+                    <p class="card-text">
+                      <i class="fas fa-user-edit me-1"></i> ${book.author}
+                    </p>
+                    <small class="book-id">ID: ${book.id}</small>
+                  </div>
+                </div>
+              </div>
+            `;
+          });
+          
+          resultsContainer.innerHTML = html;
+        } catch (error) {
+          console.error("Error fetching search results:", error);
+          document.getElementById('loading').style.display = 'none';
+        }
+      }, 300);
+    }
+    
+    // Add event listeners
+    document.getElementById('q').addEventListener('input', search);
+    document.getElementById('category').addEventListener('change', search);
+    document.getElementById('published').addEventListener('change', search);
+    
+    // Initialize autocomplete
+    document.addEventListener('DOMContentLoaded', async () => {
+      await getAllBooks(); // Load all books for autocomplete
+      autocomplete(document.getElementById("q"));
+      search(); // Initial search
+    });
+  </script>
+  
+  <!-- Bootstrap JS Bundle with Popper -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
